@@ -22,11 +22,12 @@ function isValidSwipe(
   velocity,
   velocityThreshold,
   directionalOffset,
-  directionalOffsetThreshold
+  directionalOffsetThreshold,
+  isMove
 ) {
   return (
     Math.abs(velocity) > velocityThreshold &&
-    Math.abs(directionalOffset) < directionalOffsetThreshold
+    (isMove || Math.abs(directionalOffset) < directionalOffsetThreshold)
   );
 }
 
@@ -35,12 +36,14 @@ class GestureRecognizer extends Component {
     super(props, context);
     this.swipeConfig = Object.assign(swipeConfig, props.config);
 
+    const responderMove = this._handlePanResponderMove.bind(this);
     const responderEnd = this._handlePanResponderEnd.bind(this);
     const shouldSetResponder = this._handleShouldSetPanResponder.bind(this);
     this._panResponder = PanResponder.create({
       onStartShouldSetPanResponder: shouldSetResponder,
       onMoveShouldSetPanResponder: shouldSetResponder,
       onPanResponderRelease: responderEnd,
+      onPanResponderMove: responderMove,
       onPanResponderTerminate: responderEnd
     });
   }
@@ -75,8 +78,14 @@ class GestureRecognizer extends Component {
     );
   }
 
+  _handlePanResponderMove(evt, gestureState) {
+      const swipeDirection = this._getSwipeDirection(gestureState, true);
+      const onSwiping = this.props.onSwiping;
+      onSwiping && onSwiping(swipeDirection, gestureState);
+    }
+
   _handlePanResponderEnd(evt, gestureState) {
-    const swipeDirection = this._getSwipeDirection(gestureState);
+    const swipeDirection = this._getSwipeDirection(gestureState, false);
     this._triggerSwipeHandlers(swipeDirection, gestureState);
   }
 
@@ -106,27 +115,27 @@ class GestureRecognizer extends Component {
     }
   }
 
-  _getSwipeDirection(gestureState) {
+  _getSwipeDirection(gestureState, isMove) {
     const { SWIPE_LEFT, SWIPE_RIGHT, SWIPE_UP, SWIPE_DOWN } = swipeDirections;
     const { dx, dy } = gestureState;
-    if (this._isValidHorizontalSwipe(gestureState)) {
+    if (this._isValidHorizontalSwipe(gestureState, isMove)) {
       return dx > 0 ? SWIPE_RIGHT : SWIPE_LEFT;
-    } else if (this._isValidVerticalSwipe(gestureState)) {
+    } else if (this._isValidVerticalSwipe(gestureState, isMove)) {
       return dy > 0 ? SWIPE_DOWN : SWIPE_UP;
     }
     return null;
   }
 
-  _isValidHorizontalSwipe(gestureState) {
+  _isValidHorizontalSwipe(gestureState, isMove) {
     const { vx, dy } = gestureState;
     const { velocityThreshold, directionalOffsetThreshold } = this.swipeConfig;
-    return isValidSwipe(vx, velocityThreshold, dy, directionalOffsetThreshold);
+    return isValidSwipe(vx, velocityThreshold, dy, directionalOffsetThreshold, isMove);
   }
 
-  _isValidVerticalSwipe(gestureState) {
+  _isValidVerticalSwipe(gestureState, isMove) {
     const { vy, dx } = gestureState;
     const { velocityThreshold, directionalOffsetThreshold } = this.swipeConfig;
-    return isValidSwipe(vy, velocityThreshold, dx, directionalOffsetThreshold);
+    return isValidSwipe(vy, velocityThreshold, dx, directionalOffsetThreshold, isMove);
   }
 
   render() {
